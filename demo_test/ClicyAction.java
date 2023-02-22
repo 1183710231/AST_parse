@@ -27,7 +27,7 @@ import java.util.*;
 public class ClicyAction implements IObjectActionDelegate {
 
 	private ISelection selection;
-	public List list = new List<>();
+	public List list = new List<List>();
 
 
 	/*
@@ -37,7 +37,7 @@ public class ClicyAction implements IObjectActionDelegate {
 	 *      org.eclipse.ui.IWorkbenchPart)
 	 */
 	public void setActivePart(IAction action, IWorkbenchPart targetPart) {
-	    list.getId().add().toString();
+	    list.get().add().toString();
 	}
 
 	/*
