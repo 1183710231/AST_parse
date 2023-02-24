@@ -4,12 +4,19 @@ import org.eclipse.jdt.core.dom.*;
 import java.io.File;
 import java.io.FileWriter;  
 import java.io.IOException;
+import java.io.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 
 class AstToDot extends ASTVisitor {
 	String dotfile;
 	
 	AstToDot(String filename ){
+    List<String> test_list = Arrays.asList("Java", "Jdk", "Jre");
+	    test_list.get[0].subsubstring(0).replace('1','2');
+	    Integer.toString(11);
         this.dotfile = filename + ".txt";
     }
 	
