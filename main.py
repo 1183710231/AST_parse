@@ -88,15 +88,17 @@ class AST_parse():
                     if method[1].split(',') == argu_type_list:
                         right_method = method
                 if not right_method:
-                    raise TypeExceptin(f"{var_dict[var_name][0]}.{node.member}没有找到匹配的重载函数")
+                    raise MethodNestingExceptin(f"{var_dict[var_name][0]}.{node.member}没有找到匹配的重载函数")
 
             elif len(overload_method) == 1:
                 right_method = overload_method[0]
             else: right_method = None
             # 返回类型：[方法名，[参数]，返回值]
             return right_method
-        except TypeExceptin as e:
-            print(e.str)
+        # except TypeExceptin as e:
+        #     argu_num = len(node.arguments)
+        #     right_method = [method for method in overload_method if (len(method[1].split(',')) == argu_num)][0]
+        #     return right_method
         except MethodNestingExceptin:
             argu_num = len(node.arguments)
             right_method = [method for method in overload_method if (len(method[1].split(',')) == argu_num)][0]
@@ -170,7 +172,6 @@ class AST_parse():
                             if class_meths_dict.__contains__(par_class_name):
                                 var_dict[node.name] = [f'{pack_name}.{class_name}', class_meths_dict.get(par_class_name)]
                         # 方法调用，须与变量名关联，变量名与类关联，类与包信息关联
-                        # undo 多级调用根本没进来
                         elif isinstance(node, Tree.MethodInvocation) and (var_dict.__contains__(node.qualifier)):
                             # print(node)
                             var_name = node.qualifier
@@ -207,5 +208,6 @@ if __name__ == '__main__':
     # my_parse.parse('clicy-master')
     my_parse.parse('demo_test')
 
+# undo List ['add', 'int,E', 'void'] 参数无法匹配，暂时随即返回一个
 
 
