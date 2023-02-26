@@ -3,7 +3,6 @@ import os
 import javalang
 import javalang.tree as Tree
 import os, pickle
-import operator
 import re
 
 class TypeExceptin(Exception):
@@ -59,9 +58,9 @@ class AST_parse():
     def judge_Literal(self, node):
         literal = node.value
         type_name = None
-        if literal[0] == '\'' and literal[-1:]=='\'':
+        if literal[0] == '\'' and literal[-1:] == '\'':
             type_name = 'char[]'
-        elif literal[0] == '\"' and literal[-1:]=='\"':
+        elif literal[0] == '\"' and literal[-1:] == '\"':
             type_name = 'java.lang.String'
         elif literal == 'true' or literal == 'false':
             type_name = 'boolean'
@@ -111,6 +110,7 @@ class AST_parse():
             argu_num = len(node.arguments)
             right_method = [method for method in overload_method if (len(method[1].split(',')) == argu_num)][0]
             return right_method
+
     # 每当添加新api时
     def update_control_dict(self,path):
         # 邻接表新建一行
@@ -145,7 +145,6 @@ class AST_parse():
         java_type = ['byte[]', 'char', 'short', 'int', 'long', 'float', 'double', 'boolean']
         file_handle = open('1.txt', mode='w')
         file_handle.truncate(0)
-
         for maindir, subdir, file_name_list in os.walk(dirname):
             for java_file in file_name_list:
                 if java_file.endswith('.java'):
@@ -155,8 +154,6 @@ class AST_parse():
                     # pack_desc = dict()
                     pack_dict = self.load_pkl('api2desc.pkl')
                     import_dict = dict()
-
-                    api_list = list()
                     class_meths_dict = dict()
                     # 存储控制流语句的上一个api和和当前api
                     father_api = None
