@@ -22,16 +22,16 @@ class MethodNestingExceptin(Exception):
 
 
 class AST_parse():
-    def get_father_return_class(self, path, var_dict, node):
+    def get_father_return_class(self, path, node):
         path_len = len(path) - 1
         if isinstance(path[path_len], list):
             path_len -= 1
         father_node = path[path_len]
         # undo 如果是两层掉用，则拿到第二层的变量
-        # 如果不包含在var_dict中，说明不是标准库函数
-        if hasattr(father_node, 'qualifier') and (var_dict.__contains__(father_node.qualifier)):
+        # 如果不包含在self.var_dict中，说明不是标准库函数
+        if hasattr(father_node, 'qualifier') and (self.var_dict.__contains__(father_node.qualifier)):
             father_var_name = father_node.qualifier
-            method_decs = self.get_overload_method(father_node,var_dict)
+            method_decs = self.get_overload_method(father_node)
             father_return_class = method_decs[2]
         else:
             # undo 此处应考虑无对象直接调用静态方法的情况
@@ -62,10 +62,10 @@ class AST_parse():
         return type_name
 
     # 通过函数调用节点的方法名及参数，查询出符合的库函数
-    def get_overload_method(self, node, var_dict):
+    def get_overload_method(self, node):
         try:
             var_name = node.qualifier
-            method_list = var_dict[var_name][1]
+            method_list = self.var_dict[var_name][1]
             overload_method = [method for method in method_list if method[0] == node.member]
             # undo 当重叠调用时，参数包含MethodInvocation，和MemberReference两种
             if len(overload_method) > 1:
@@ -75,7 +75,7 @@ class AST_parse():
                 argu_type_list = list()
                 for argument in node.arguments:
                     if isinstance(argument,Tree.MemberReference):
-                        argu_type_list.append(var_dict.get(argument.member)[0])
+                        argu_type_list.append(self.var_dict.get(argument.member)[0])
                     elif isinstance(argument,Tree.Literal):
                         argu_type_list.append(self.judge_Literal(argument))
                     else:
@@ -88,7 +88,7 @@ class AST_parse():
                     if method[1].split(',') == argu_type_list:
                         right_method = method
                 if not right_method:
-                    raise TypeExceptin(f"{var_dict[var_name][0]}.{node.member}没有找到匹配的重载函数")
+                    raise MethodNestingExceptin(f"{self.var_dict[var_name][0]}.{node.member}没有找到匹配的重载函数")
 
             elif len(overload_method) == 1:
                 right_method = overload_method[0]
@@ -117,7 +117,7 @@ class AST_parse():
                     pack_dict = self.load_pkl('api2desc.pkl')
                     import_dict = dict()
                     # {参数名，[包名.类名,[参数列表]]}
-                    var_dict = dict()
+                    self.var_dict = dict()
                     api_list = list()
                     class_meths_dict = dict()
                     # undo 核心包java.lang默认导入
@@ -126,6 +126,11 @@ class AST_parse():
                         import_dict[class_name] = 'java.lang'
                     for path, node in tree:
                         # print(path, node)
+                        # 所有条件语句，待补充
+                        # control_statements = ['IfStatement', 'WhileStatement']
+                        # # 如过父亲节点中包含条件条件语句，则不予执行
+                        # if  [father_path for father_path in path if father_path in control_statements]:
+                        #     continue
                         # 提取导入类，并获得包信息
                         if isinstance(node,Tree.Import):
                             # undo .*情况node.path没有*
@@ -149,38 +154,43 @@ class AST_parse():
                         elif isinstance(node, Tree.ClassDeclaration):
                             for class_name in class_meths_dict.keys():
                                 pack_name = import_dict.get(class_name)
-                                var_dict[class_name] = [f'{pack_name}.{class_name}', class_meths_dict.get(class_name)]
+                                self.var_dict[class_name] = [f'{pack_name}.{class_name}', class_meths_dict.get(class_name)]
+                        elif isinstance(node, Tree.IfStatement):
+                            print(node)
+                            
+                        elif isinstance(node, Tree.WhileStatement):
+                            print(node)
                         #通过path获得局部变量定义，未确定类
                         elif isinstance(node, Tree.VariableDeclarator):
                             path_len = len(path) - 1
                             if isinstance(path[path_len], list):
                                 path_len -= 1
-                            # var_dict[node.name] = path[path_len].type.name
+                            # self.var_dict[node.name] = path[path_len].type.name
                             var_class_name = path[path_len].type.name
                             if class_meths_dict.__contains__(var_class_name):
                                 pack_name = import_dict.get(var_class_name)
-                                var_dict[node.name] = [f'{pack_name}.{var_class_name}', class_meths_dict.get(var_class_name)]
+                                self.var_dict[node.name] = [f'{pack_name}.{var_class_name}', class_meths_dict.get(var_class_name)]
                             # 在这里加入java基本类型变量，为参数判断准备
                             if var_class_name in java_type:
-                                var_dict[node.name] = var_class_name
+                                self.var_dict[node.name] = var_class_name
                         # 形参，获取变量名及类
                         elif isinstance(node, Tree.FormalParameter):
-                            # var_dict[node.name] = node.type.name
+                            # self.var_dict[node.name] = node.type.name
                             par_class_name = node.type.name
                             if class_meths_dict.__contains__(par_class_name):
-                                var_dict[node.name] = [f'{pack_name}.{class_name}', class_meths_dict.get(par_class_name)]
+                                self.var_dict[node.name] = [f'{pack_name}.{class_name}', class_meths_dict.get(par_class_name)]
                         # 方法调用，须与变量名关联，变量名与类关联，类与包信息关联
                         # undo 多级调用根本没进来
-                        elif isinstance(node, Tree.MethodInvocation) and (var_dict.__contains__(node.qualifier)):
+                        elif isinstance(node, Tree.MethodInvocation) and (self.var_dict.__contains__(node.qualifier)):
                             # print(node)
                             var_name = node.qualifier
-                            method_class = var_dict[var_name][0]
-                            method_decs = self.get_overload_method(node, var_dict)
+                            method_class = self.var_dict[var_name][0]
+                            method_decs = self.get_overload_method(node)
                             # print(node)
                             api_list.append(f'{method_class}.{method_decs[0]}({method_decs[1]})')
                         # 当连续调用
                         elif isinstance(node, Tree.MethodInvocation) and not node.qualifier:
-                            var_father_return_class = self.get_father_return_class(path, var_dict, node)
+                            var_father_return_class = self.get_father_return_class(path, node)
                             if (not var_father_return_class is None):
                                 # 当父节点方法返回值为None
                                 if var_father_return_class == 'None.E':
@@ -190,12 +200,12 @@ class AST_parse():
                                     node.qualifier = var_father_return_class.split('.')[-1]
                                     # 当父节点返回为正常类
                                     if node.qualifier in import_dict.keys():
-                                        method_decs = self.get_overload_method(node, var_dict)
+                                        method_decs = self.get_overload_method(node)
                                         api_list.append(f'{var_father_return_class}.{method_decs[0]}({method_decs[1]})')
                         file_handle.write('path=' + str(path) + '\n')
                         file_handle.write('node=' + str(node) + '\n'+ '\n'+ '\n')
         # print(import_list)
-        # print(var_dict)
+        # print(self.var_dict)
         print(api_list)
         file_handle.close()
 
@@ -208,4 +218,5 @@ if __name__ == '__main__':
     my_parse.parse('demo_test')
 
 
-
+# undo UNKNOW
+# undo 两个局部变量名字一样怎么办 ,,已解决

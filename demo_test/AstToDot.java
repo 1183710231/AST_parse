@@ -14,8 +14,30 @@ class AstToDot extends ASTVisitor {
 	String dotfile;
 	
 	AstToDot(String filename ){
-    List<String> test_list = Arrays.asList("Java", "Jdk", "Jre");
+        List<String> test_list = Arrays.asList("Java", "Jdk", "Jre");
 	    test_list.get[0].subsubstring(0).replace('1','2');
+	    int test_i = 10;
+	    while(test_i>0){
+	        int test_int = 22;
+	        test_i = test_i - 1;
+	        test_list.add(test_int);
+	    }
+	    if(test_i > 0){
+	        test_i = test_i + 1;
+	        if(test_i > 10){
+	            test_i = test_i + 10;
+	            test_list.remove(2);
+	        }
+	    }
+	    else if(test_i < 0){
+	        test_i = test_i * 2;
+	        test_list.remove(2);
+	    }
+	    else{
+	        test_i = test_i - 1;
+	        test_list.remove(2);
+	    }
+
 	    Integer.toString(11);
         this.dotfile = filename + ".txt";
     }
