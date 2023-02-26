@@ -39,12 +39,9 @@ class AST_parse():
         # undo 如果是两层掉用，则拿到第二层的变量
         # 如果不包含在self.var_dict中，说明不是标准库函数
         if hasattr(father_node, 'qualifier') and (self.var_dict.__contains__(father_node.qualifier)):
-            father_var_name = father_node.qualifier
             method_decs = self.get_overload_method(father_node)
             father_return_class = method_decs[2]
         else:
-            # undo 此处应考虑无对象直接调用静态方法的情况
-            # 三层调用暂时忽略
             father_return_class = None
         # 返回格式 包+类名
         return father_return_class
@@ -110,6 +107,8 @@ class AST_parse():
             argu_num = len(node.arguments)
             right_method = [method for method in overload_method if (len(method[1].split(',')) == argu_num)][0]
             return right_method
+        except BaseException:
+            pass
 
     # 每当添加新api时
     def update_control_dict(self,path):
@@ -164,6 +163,7 @@ class AST_parse():
                         import_dict[class_name] = 'java.lang'
                     for path, node in tree:
                         # print(path, node)
+                        # print(node)
                         # 所有条件语句，待补充
                         # control_statements = ['IfStatement', 'WhileStatement']
                         # # 如过父亲节点中包含条件条件语句，则不予执行

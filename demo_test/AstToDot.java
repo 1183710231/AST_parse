@@ -15,7 +15,7 @@ class AstToDot extends ASTVisitor {
 	
 	AstToDot(String filename ){
         List<String> test_list = Arrays.asList("Java", "Jdk", "Jre");
-	    test_list.get[0].subsubstring(0).replace('1','2');
+	    test_list.get(0).subsubstring(0).replace('1','2');
 	    int test_i = 10;
 	    while(test_i>0){
 	        int test_int = 22;
