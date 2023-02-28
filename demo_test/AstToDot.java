@@ -20,6 +20,7 @@ class AstToDot extends ASTVisitor {
 	    for(int num=1;num<10;num++){
 	        test_i+=1;
 	        String s=test_list.get(0);
+	        test_list.add('a');
 	    }
 
 

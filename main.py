@@ -128,7 +128,8 @@ class AST_parse():
         for key in list(self.control_node_dict.keys()):
             # 如果控制节点被弹出，即该循环结束
             control_node = self.control_node_dict.get(key)
-            if len(path) <= key or not path[key] == control_node[0]:
+            path_num = int(key.split(',')[0])
+            if len(path) <= path_num or not path[path_num] == control_node[0]:
                 control_node[2] = now_api_num
                 if not control_node[1] == -1:
                     self.neighbor_dict.get(control_node[1]).add(control_node[2])
@@ -137,8 +138,8 @@ class AST_parse():
                 if not control_node[3]:
                     # 环
                     if isinstance(control_node[0], Tree.WhileStatement) or isinstance(control_node[0], Tree.ForStatement):
-                        self.neighbor_dict.get(control_node[3]).add(self.last_api)
-                        self.G.add_edge(self.control_node[3], self.last_api)
+                        self.neighbor_dict.get(self.last_api).add(control_node[4])
+                        self.G.add_edge(control_node[3], self.last_api)
                     self.neighbor_dict.get(self.last_api).add(control_node[2])
                     self.G.add_edge(self.last_api, control_node[2])
                 self.control_node_dict.pop(key)
@@ -222,7 +223,7 @@ class AST_parse():
 
                         elif isinstance(node, Tree.IfStatement) or isinstance(node, Tree.WhileStatement) or isinstance(node, Tree.ForStatement):
                             # 如果新的path长度恰好和之前相等，那么就会被覆盖
-                            self.control_node_dict[len(path)] = [node, self.last_api, None, True, None]
+                            self.control_node_dict[f'{len(path)},{hash(node)}'] = [node, self.last_api, None, True, None]
 
                         #通过path获得局部变量定义，未确定类
                         elif isinstance(node, Tree.VariableDeclarator):
@@ -246,8 +247,8 @@ class AST_parse():
                         # undo 多级调用根本没进来
                         elif isinstance(node, Tree.MethodInvocation):
                             print(node)
-                            if node.member == 'write':
-                                print('a')
+                            # if node.member == 'write':
+                            #     print('a')
                             if self.var_dict.__contains__(node.qualifier):
                                 # print(node)
                                 var_name = node.qualifier
