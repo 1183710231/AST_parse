@@ -116,7 +116,7 @@ class AST_parse():
             pass
 
     # 每当添加新api时
-    def update_control_dict(self, path):
+    def update_control_dict(self, path, node):
         # 邻接表新建一行
         now_api_num = len(self.api_list) - 1
         self.G.add_node(now_api_num)
@@ -135,13 +135,18 @@ class AST_parse():
                     self.G.add_edge(control_node[1], control_node[2])
                 # 证明该循环中没有api
                 if not control_node[3]:
+                    # 环
+                    if isinstance(control_node[0], Tree.WhileStatement) or isinstance(control_node[0], Tree.ForStatement):
+                        self.neighbor_dict.get(control_node[3]).add(self.last_api)
+                        self.G.add_edge(self.control_node[3], self.last_api)
                     self.neighbor_dict.get(self.last_api).add(control_node[2])
                     self.G.add_edge(self.last_api, control_node[2])
                 self.control_node_dict.pop(key)
             # 如果循环还未结束，则链接fater和循环中第一个api
             elif self.last_api == -1:
                 control_node[3] = False
-            elif  control_node[3]:
+            elif control_node[3]:
+                control_node[4] = now_api_num
                 self.neighbor_dict.get(control_node[1]).add(now_api_num)
                 self.G.add_edge(control_node[1], now_api_num)
                 control_node[3] = False
@@ -160,14 +165,10 @@ class AST_parse():
                     apath = os.path.join(maindir, java_file)
                     f_input = open(apath, 'r', encoding='utf-8')
                     tree = javalang.parse.parse(f_input.read())
-                    # pack_desc = dict()
                     pack_dict = self.load_pkl('api2desc.pkl')
                     import_dict = dict()
                     class_meths_dict = dict()
-                    # static_flag = True
                     # 存储控制流语句的上一个api和和当前api
-                    father_api = None
-                    children_api = None
                     # undo 核心包java.lang默认导入
                     class_meths_dict.update(pack_dict.get('java.lang'))
                     for class_name in class_meths_dict.keys():
@@ -176,10 +177,7 @@ class AST_parse():
                         # print(path, node)
                         # print(node)
                         # 所有条件语句，待补充
-                        # control_statements = ['IfStatement', 'WhileStatement']
                         # # 如过父亲节点中包含条件条件语句，则不予执行
-                        # if  [father_path for father_path in path if father_path in control_statements]:
-                        #     continue
                         # 提取导入类，并获得包信息
                         if isinstance(node, Tree.Import):
                             # undo .*情况node.path没有*
@@ -222,17 +220,15 @@ class AST_parse():
                             self.last_api = -1
 
 
-                        elif isinstance(node, Tree.IfStatement) or isinstance(node, Tree.WhileStatement):
-                            self.control_node_dict[len(path)] = [node, self.last_api, None, True]
+                        elif isinstance(node, Tree.IfStatement) or isinstance(node, Tree.WhileStatement) or isinstance(node, Tree.ForStatement):
+                            # 如果新的path长度恰好和之前相等，那么就会被覆盖
+                            self.control_node_dict[len(path)] = [node, self.last_api, None, True, None]
 
                         #通过path获得局部变量定义，未确定类
                         elif isinstance(node, Tree.VariableDeclarator):
-                            # if node.name == 'e':
-                            #     print('here')
                             path_len = len(path) - 1
                             if isinstance(path[path_len], list):
                                 path_len -= 1
-                            # self.var_dict[node.name] = path[path_len].type.name
                             var_class_name = path[path_len].type.name
                             if class_meths_dict.__contains__(var_class_name):
                                 pack_name = import_dict.get(var_class_name)
@@ -243,7 +239,6 @@ class AST_parse():
 
                         # 形参，获取变量名及类
                         elif isinstance(node, Tree.FormalParameter):
-                            # self.var_dict[node.name] = node.type.name
                             par_class_name = node.type.name
                             if class_meths_dict.__contains__(par_class_name):
                                 self.var_dict[node.name] = [f'{pack_name}.{class_name}', class_meths_dict.get(par_class_name)]
@@ -258,10 +253,9 @@ class AST_parse():
                                 var_name = node.qualifier
                                 method_class = self.var_dict[var_name][0]
                                 method_decs = self.get_overload_method(node)
-                                # print(node)
                                 self.api_list.append(f'{method_class}.{method_decs[0]}({method_decs[1]})')
 
-                                self.update_control_dict(path)
+                                self.update_control_dict(path, node)
                             # 当连续调用
                             elif not node.qualifier:
                                 var_father_return_class = self.get_father_return_class(path, node)
@@ -269,7 +263,7 @@ class AST_parse():
                                     # 当父节点方法返回值为None
                                     if var_father_return_class == 'None.E':
                                         self.api_list.append(f'E.{node.member}(UNKNOW)')
-                                        self.update_control_dict(path)
+                                        self.update_control_dict(path, node)
                                     # 当父节点返回为正常类
                                     else:
                                         node.qualifier = var_father_return_class.split('.')[-1]
@@ -277,11 +271,9 @@ class AST_parse():
                                         if node.qualifier in import_dict.keys():
                                             method_decs = self.get_overload_method(node)
                                             self.api_list.append(f'{var_father_return_class}.{method_decs[0]}({method_decs[1]})')
-                                            self.update_control_dict(path)
+                                            self.update_control_dict(path, node)
                         file_handle.write('path=' + str(path) + '\n')
                         file_handle.write('node=' + str(node) + '\n'+ '\n'+ '\n')
-        # print(import_list)
-        # print(self.var_dict)
         print(self.all_api_list)
         print(self.all_neighbor_dict)
         print(self.all_path)
@@ -292,17 +284,18 @@ class AST_parse():
 
 if __name__ == '__main__':
     my_parse = AST_parse()
-    # my_parse.parse('clicy-master')
     my_parse.parse('demo_test')
 
 
 # undo UNKNOW 已解决
 # undo 两个局部变量名字一样怎么办 ,已解决
 # undo CatchClauseParameter(annotations=None, modifiers=None, name=e, types=['IOException']
-# undo 方法间的调用顺序
+# undo 方法间的调用顺序  do
+
+
 # undo 循环调用 已解决
 # undo 多类测试
 # undo 返回值，参数问题  java.util.Arrays.asList(T...)
 # undo raplase为什么不在里面
-# undo 生成路径
+# undo 生成路径 do
 # undo 循环

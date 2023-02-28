@@ -17,6 +17,12 @@ class AstToDot extends ASTVisitor {
         List<String> test_list = Arrays.asList("Java", "Jdk", "Jre");
 	    test_list.get(0).subsubstring(0).replace('1','2');
 	    int test_i = 10;
+	    for(int num=1;num<10;num++){
+	        test_i+=1;
+	        String s=test_list.get(0);
+	    }
+
+
 	    while(test_i>0){
 	        int test_int = 22;
 	        test_i = test_i - 1;
