@@ -4,6 +4,7 @@ import javalang
 import javalang.tree as Tree
 import os, pickle
 import re
+import networkx as nx
 
 class TypeExceptin(Exception):
     "this is user's Exception for check the length of name "
@@ -32,6 +33,8 @@ class AST_parse():
         self.all_neighbor_dict = list()
         self.api_list = list()
         self.all_api_list = list()
+        self.G = nx.Graph()
+        self.all_path = list()
 
     def get_father_return_class(self, path, node):
         path_len = len(path) - 1
@@ -116,9 +119,12 @@ class AST_parse():
     def update_control_dict(self, path):
         # 邻接表新建一行
         now_api_num = len(self.api_list) - 1
+        self.G.add_node(now_api_num)
         self.neighbor_dict[now_api_num] = set()
+        # 如果没有控制节点且有上一个api
         if not self.control_node_dict.keys() and self.last_api > -1:
             self.neighbor_dict.get(self.last_api).add(now_api_num)
+            self.G.add_edge(self.last_api, now_api_num)
         for key in list(self.control_node_dict.keys()):
             # 如果控制节点被弹出，即该循环结束
             control_node = self.control_node_dict.get(key)
@@ -126,24 +132,23 @@ class AST_parse():
                 control_node[2] = now_api_num
                 if not control_node[1] == -1:
                     self.neighbor_dict.get(control_node[1]).add(control_node[2])
+                    self.G.add_edge(control_node[1], control_node[2])
                 # 证明该循环中没有api
                 if not control_node[3]:
                     self.neighbor_dict.get(self.last_api).add(control_node[2])
+                    self.G.add_edge(self.last_api, control_node[2])
                 self.control_node_dict.pop(key)
             # 如果循环还未结束，则链接fater和循环中第一个api
             elif self.last_api == -1:
                 control_node[3] = False
             elif  control_node[3]:
                 self.neighbor_dict.get(control_node[1]).add(now_api_num)
+                self.G.add_edge(control_node[1], now_api_num)
                 control_node[3] = False
             else:
                 self.neighbor_dict.get(self.last_api).add(now_api_num)
-
+                self.G.add_edge(self.last_api, now_api_num)
         self.last_api = now_api_num
-
-    # def list_remove_same(self):
-    #     for key in self.neighbor_dict.keys():
-    #         self.neighbor_dict.get(key) = list(set())
 
     def parse(self, dirname):
         java_type = ['byte[]', 'char', 'short', 'int', 'long', 'float', 'double', 'boolean']
@@ -203,11 +208,19 @@ class AST_parse():
 
                         elif isinstance(node, Tree.MethodDeclaration):
                             self.all_api_list.append(list(self.api_list))
+                            # 把索引转为api，之所以用索引是因为api有重名的
+                            for num_path in nx.all_simple_paths(self.G, source=0, target=len(self.G.nodes)-1):
+                                api_path = list()
+                                for num_api in num_path:
+                                    api_path.append(self.api_list[num_api])
+                                self.all_path.append(api_path)
+                            self.G.clear()
                             self.api_list.clear()
                             self.all_neighbor_dict.append(dict(self.neighbor_dict))
                             self.neighbor_dict.clear()
                             self.control_node_dict.clear()
                             self.last_api = -1
+
 
                         elif isinstance(node, Tree.IfStatement) or isinstance(node, Tree.WhileStatement):
                             self.control_node_dict[len(path)] = [node, self.last_api, None, True]
@@ -247,6 +260,7 @@ class AST_parse():
                                 method_decs = self.get_overload_method(node)
                                 # print(node)
                                 self.api_list.append(f'{method_class}.{method_decs[0]}({method_decs[1]})')
+
                                 self.update_control_dict(path)
                             # 当连续调用
                             elif not node.qualifier:
@@ -270,6 +284,7 @@ class AST_parse():
         # print(self.var_dict)
         print(self.all_api_list)
         print(self.all_neighbor_dict)
+        print(self.all_path)
         file_handle.close()
 
 
@@ -289,3 +304,5 @@ if __name__ == '__main__':
 # undo 多类测试
 # undo 返回值，参数问题  java.util.Arrays.asList(T...)
 # undo raplase为什么不在里面
+# undo 生成路径
+# undo 循环
